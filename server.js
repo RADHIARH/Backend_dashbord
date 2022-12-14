@@ -1,7 +1,6 @@
 // import packages
 const express = require("express");
 const path = require("path");
-require("dotenv").config({ path: "./config/.env" });
 const app = express();
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({ extended: false }));
