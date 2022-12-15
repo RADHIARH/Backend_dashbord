@@ -23,7 +23,7 @@ var mysql = require("mysql2");
 let dbConn = require("./db");
 
 // establish server connection
-const port = process.env.PORT || 3000;
+const port = 3001;
 console.log(port);
 app.listen(port, function () {
   console.log("Node app is running on port " + port);
@@ -158,24 +158,43 @@ app.delete("/delete/user/:id", (req, res) => {
 });
 
 // login
+// app.post("/login", (req, res) => {
+//   dbConn.connect((err) => {
+//     if (!err) console.log("Connection Established Successfully");
+//     else console.log("Connection Failed!" + JSON.stringify(err, undefined, 2));
+//   });
+//   dbConn.query(
+//     "select * from user_table where user_phone= ? ",
+//     req.body.telephone,
+//     (err, rows, fields) => {
+//       if (rows.length > 0) {
+//         res.send(rows[0]);
+//       } else if (rows.length === 0) {
+//         res.send({ message: "error" });
+//       }
+//     }
+//   );
+// });
+
 app.post("/login", (req, res) => {
-  dbConn.connect((err) => {
-    if (!err) console.log("Connection Established Successfully");
-    else console.log("Connection Failed!" + JSON.stringify(err, undefined, 2));
-  });
+  console.log(req.body.telephone);
   dbConn.query(
     "select * from user_table where user_phone= ? ",
     req.body.telephone,
-    (err, rows, fields) => {
-      if (!err) {
-        res.send(rows[0]);
-        console.log(rows[0]);
-      } else console.log(err);
+    (err, result) => {
+      if (err) {
+        res.send({ err: err });
+      }
+      console.log(result.length);
+      if (result.length > 0) {
+        res.send({ user: result });
+      } else res.send({ message: "Wrong username/password comination!" });
     }
   );
 });
+
 app.get("/logout", (req, res) => {
-  dbConn.query(sql, function (err, rows) {
+  dbConn.query("", function (err, rows) {
     _err = err;
     _rows = rows;
   });
@@ -322,10 +341,4 @@ app.post("/send/email", (req, res) => {
       else console.log(err);
     }
   );
-});
-
-app.use(express.static(path.join(__dirname, "build")));
-
-app.get("/*", (req, res) => {
-  res.sendFile(path.join(__dirname, "build", "index.html"));
 });
