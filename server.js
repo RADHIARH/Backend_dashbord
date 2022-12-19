@@ -18,12 +18,14 @@ const transporter = nodemailer.createTransport(
     },
   })
 );
+// require("dotenv").config({ path: "./config/.env" });
+require("dotenv").config();
+const port = process.env.PORT || 3000;
 //  connect to database
 var mysql = require("mysql2");
 let dbConn = require("./db");
 
 // establish server connection
-const port = 3001;
 console.log(port);
 app.listen(port, function () {
   console.log("Node app is running on port " + port);
@@ -66,6 +68,7 @@ app.post("/add/user", (req, res) => {
     [
       user.firstname,
       user.lastname,
+      ,
       user.phone,
       user.email,
       user.civility,
@@ -177,30 +180,30 @@ app.delete("/delete/user/:id", (req, res) => {
 // });
 
 app.post("/login", (req, res) => {
-  console.log(req.body.telephone);
+  dbConn.connect((err) => {
+    if (!err) console.log("Connection Established Successfully");
+    else console.log("Connection Failed!" + JSON.stringify(err, undefined, 2));
+  });
   dbConn.query(
     "select * from user_table where user_phone= ? ",
     req.body.telephone,
-    (err, result) => {
-      if (err) {
-        res.send({ err: err });
-      }
-      console.log(result.length);
-      if (result.length > 0) {
-        res.send({ user: result });
-      } else res.send({ message: "Wrong username/password comination!" });
+    (err, rows, fields) => {
+      if (!err) {
+        res.send(rows[0]);
+        console.log(rows[0]);
+      } else console.log(err);
     }
   );
 });
 
 app.get("/logout", (req, res) => {
-  dbConn.query("", function (err, rows) {
-    _err = err;
-    _rows = rows;
-  });
-  dbConn.end(function () {
-    callback(_err, _rows);
-  });
+  // dbConn.query("", function (err, rows) {
+  //   _err = err;
+  //   _rows = rows;
+  // });
+  // dbConn.end(function () {
+  //   callback(_err, _rows);
+  // });
 });
 
 // delete employe
@@ -334,10 +337,193 @@ app.post("/send/email", (req, res) => {
     }
   });
   dbConn.query(
+    "insert into  invitation  (id_user,accepted,datesend) values (?,?,?)",
+    [req.body.id, false, req.body.datesend],
+    (err, rows, fields) => {
+      if (!err) res.send(rows);
+      else console.log(err);
+    }
+  );
+});
+// set user pasword
+app.put("/edit/password", (req, res) => {
+  dbConn.query(
     "update  user_table  set user_password =?  where user_id =? ",
     [req.body.code, req.body.id],
     (err, rows, fields) => {
       if (!err) res.send(rows);
+      else console.log(err);
+    }
+  );
+});
+//  send whatsapp message
+// const msg91 = require("msg91");
+// app.post("/send/whatsapp", (req, res) => {
+//   const user = req.params.id;
+//   var args = {
+//     flow_id: "639b2aa56c1c487ef45d1732",
+//     sender: "radhia0204	",
+//     mobiles: "+21656065074",
+//     name: "ichrak",
+//   };
+//   msg91.sendSMS(args, function (err, response) {
+//     console.log(err);
+//     console.log(response);
+//   });
+// });
+// edit password
+app.put("/edit/newpassword/:id", (req, res) => {
+  const user = req.params.id;
+  const pass = req.body.password;
+  dbConn.query(
+    "update  user_table	 set user_password =? where user_id =?  ",
+    [pass, user],
+    (err, rows, fields) => {
+      if (!err) {
+        res.send(rows);
+        console.log(rows);
+      } else console.log(err);
+    }
+  );
+});
+
+// get invitation
+app.get("/invitations", (req, res) => {
+  dbConn.query("SELECT * FROM invitation", (err, rows, fields) => {
+    if (!err) res.send(rows);
+    else console.log(err);
+  });
+});
+// send whatsapp
+app.post("/send/whatssapp", (req, res) => {
+  console.log(req.body.code);
+  console.log(req.body.tel);
+  console.log(req.body.url);
+  //   const msg = req.body.msg;
+  const client = require("twilio")(
+    process.env.TWILIO_ACCOUNT_SID,
+    process.env.TWILIO_AUTH_TOKEN
+  );
+  client.messages
+    .create({
+      from: "whatsapp:+14155238886",
+      to: `whatsapp:+216${req.body.tel}`,
+      body: `votre code est de ${req.body.code} et votre lien est ${req.body.url}`,
+    })
+    .then((message) => res.send(message))
+    .catch((err) => {
+      console.log(err);
+      res.send(err);
+    });
+  dbConn.query(
+    "insert into  invitation  (id_user,accepted,datesend) values (?,?,?)",
+    [req.body.id, false, req.body.datesend],
+    (err, rows, fields) => {
+      if (!err) res.send(rows);
+      else console.log(err);
+    }
+  );
+  dbConn.query(
+    "update  user_table  set user_password =?  where user_id =? ",
+    [req.body.code, req.body.id],
+    (err, rows, fields) => {
+      if (!err) res.send(rows);
+      else console.log(err);
+    }
+  );
+});
+
+// validate account
+// Creating PUT Router to modify a  user
+app.put("/validate/user/:id", (req, res) => {
+  const user = req.body;
+  const user_id = req.params.id;
+  console.log("userrr" + req.body);
+  console.log("user" + user_id);
+  dbConn.query(
+    "update  user_table  set user_firstname=? ,user_lastname =? ,user_phone=?,user_email=?, user_civility=?, user_speciality=?, user_adress=?,  user_birthday=?, user_seniority=?  ,user_experience=? , user_comment =? , cin=? , poste=? ,verified=? where user_id =? ",
+    [
+      user.firstname,
+      user.lastname,
+      user.phone,
+      user.email,
+      user.civility,
+      user.speciality,
+      user.adress,
+      user.birthday,
+      user.seniority,
+      user.experience,
+      user.comment,
+      user.cin,
+      user.poste,
+      true,
+      user_id,
+    ],
+    (err, rows, fields) => {
+      if (!err) res.send("user successfully updated");
+      else console.log(err);
+    }
+  );
+});
+// upload files
+const fileupload = require("express-fileupload");
+app.use(fileupload());
+app.post("/upload/:id", (req, res) => {
+  const id = req.params.id;
+  const newpath = "D:/Project_Dashboard/Frontend/myapp/public/imgs/";
+  const file = req.files.file;
+  const filename = file.name;
+  console.log(filename);
+
+  file.mv(`${newpath}${filename}`);
+  dbConn.query(
+    "insert into user_images(user_id,img_name)  values(?,?)",
+    [id, filename],
+    (err, rows, fields) => {
+      if (!err) res.send("addedws");
+      else console.log(err);
+    }
+  );
+});
+//  get user images
+app.get("/images/:id", (req, res) => {
+  dbConn.query(
+    "select * from user_images where user_id=? ",
+    [req.params.id],
+    (err, rows, fields) => {
+      if (!err) res.send(rows);
+      else console.log(err);
+    }
+  );
+});
+
+// get all data
+app.get("/allusers", (req, res) => {
+  dbConn.query("SELECT * FROM user_table", (err, rows, fields) => {
+    if (!err) res.send(rows);
+    else console.log(err);
+  });
+});
+// get content by language
+app.get("/language/:id", (req, res) => {
+  const id = req.params.id;
+  dbConn.query(
+    "SELECT * FROM  language_content where id_lang =?",
+    id,
+    (err, rows, fields) => {
+      if (!err) res.send(rows);
+      else console.log(err);
+    }
+  );
+});
+// get selected language
+app.get("/lang/:lang", (req, res) => {
+  const id = req.params.lang;
+  dbConn.query(
+    "SELECT * FROM  language where id_lang =?",
+    id,
+    (err, rows, fields) => {
+      if (!err) res.send(rows[0]);
       else console.log(err);
     }
   );
